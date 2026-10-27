@@ -1,0 +1,55 @@
+graph TD
+    %% User Interfaces
+    subgraph UI ["Consumption Layer"]
+        CLI["CLI Commands (Commander)"]
+        TUI["Interactive TUI (@clack/prompts)"]
+        MCP["Model Context Protocol (AI Server)"]
+    end
+
+    %% Application Layer
+    subgraph App ["Application Workflows"]
+        Orchestrator["Task Orchestrator & Session State"]
+        Config["Local Config & Settings (.dearc)"]
+        Reporting["Terminal & JSON Formatters"]
+    end
+
+    %% Core Domain
+    subgraph Core ["Core Domain & Primitives (src/core/)"]
+        ResultAlgebra["Tagged Result<T, E> & Error Registry"]
+        ProcessSupervision["Process Lifecycle (src/core/process/)"]
+        PathUtils["Path Normalizer & Safe File Walker"]
+        EvidenceModel["Evidence Provenance (Obs vs Inf vs Unknown)"]
+    end
+
+    %% Modules
+    subgraph Modules ["Application Modules (src/modules/)"]
+        EnvModule["modules/env<br/>(Secret & Env Sentinel)"]
+        PurgeModule["modules/purge<br/>(Dev Bloat & Disk Cleaner)"]
+        LensModule["modules/lens<br/>(Crash & Stacktrace Demystifier)"]
+    end
+
+    %% Pluggable Extensions
+    subgraph Plugins ["Community Plugins"]
+        EnvScanners["Env Scanners:<br/>TypeScript, JavaScript, Python, Go, Docker"]
+        PurgeTargets["Purge Targets:<br/>node_modules, .venv, target/, .gradle, Docker"]
+        LensParsers["Lens Parsers:<br/>OS System Errors, Node V8, Python Traceback"]
+    end
+
+    %% Inward dependency flows
+    CLI --> Orchestrator
+    TUI --> Orchestrator
+    MCP --> Orchestrator
+
+    Orchestrator --> EnvModule
+    Orchestrator --> PurgeModule
+    Orchestrator --> LensModule
+
+    EnvModule --> EnvScanners
+    PurgeModule --> PurgeTargets
+    LensModule --> LensParsers
+
+    EnvModule --> Core
+    PurgeModule --> Core
+    LensModule --> Core
+    Orchestrator --> Core
+    Reporting --> Core

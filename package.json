@@ -1,0 +1,69 @@
+{
+  "name": "dea-cli",
+  "version": "0.1.0",
+  "description": "Developer's Everyday Assistant: A local-first companion for env drift, disk bloat, and crash debugging.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "dea": "./dist/cli/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "node -e \"const fs = require('fs'); fs.rmSync('dist', { recursive: true, force: true });\"",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "lint:fix": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" \"docs/**/*.md\" \"*.md\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\" \"docs/**/*.md\" \"*.md\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "check:fast": "npm run typecheck && npm run lint",
+    "check:pr": "npm run check:fast && npm run format:check && npm run test"
+  },
+  "keywords": [
+    "developer-tools",
+    "cli",
+    "environment-variables",
+    "disk-cleaner",
+    "purge",
+    "stacktrace",
+    "error-lens",
+    "local-first",
+    "mcp"
+  ],
+  "author": "Kaushik Rawal and DEA Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kaushikrawal4365/DEA.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kaushikrawal4365/DEA/issues"
+  },
+  "homepage": "https://github.com/kaushikrawal4365/DEA#readme",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.8.2",
+    "commander": "^13.1.0",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "@typescript-eslint/eslint-plugin": "^8.21.0",
+    "@typescript-eslint/parser": "^8.21.0",
+    "eslint": "^9.19.0",
+    "globals": "^17.13.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3",
+    "vitest": "^5.0.5"
+  }
+}
