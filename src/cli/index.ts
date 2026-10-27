@@ -2,6 +2,7 @@
 
 import { Command } from 'commander';
 import pc from 'picocolors';
+import { registerEnvCommands } from './commands/env.js';
 
 const program = new Command();
 
@@ -15,14 +16,10 @@ program
   )
   .version('0.1.0', '-v, --version', 'Output the current version of DEA');
 
-// Temporary stub commands for Milestone 1, 2, and 3
-program
-  .command('env')
-  .description('Inspect, validate, and secure environment variables and secrets')
-  .action(() => {
-    console.log(pc.yellow('DEA Env module initializing... (Milestone 1)'));
-  });
+// Register Module Commands
+registerEnvCommands(program);
 
+// Stubs for upcoming Milestone 2 and 3
 program
   .command('purge')
   .description('Safely reclaim disk space from dormant build caches and dependencies')
