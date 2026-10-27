@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import { Command } from 'commander';
 import pc from 'picocolors';
-import { checkEnvironment, scanSecrets } from '../../modules/env/engine.js';
+import { checkEnvironment, scanSecrets, syncEnvironment } from '../../modules/env/engine.js';
 import { relativeDisplay } from '../../core/path.js';
 
 export function registerEnvCommands(parent: Command): void {
@@ -188,5 +188,63 @@ export function registerEnvCommands(parent: Command): void {
         pc.red('❌ Commit blocked: remove hardcoded secrets and use environment variables.\n')
       );
       process.exit(1);
+    });
+
+  envCmd
+    .command('sync')
+    .description('Automatically synchronize .env.example with variables used in code and .env')
+    .argument('[dir]', 'Directory to sync', '.')
+    .option('-f, --file <name>', 'Custom example file name (default: .env.example)')
+    .option('-d, --dry-run', 'Preview changes without modifying .env.example', false)
+    .action(async (targetDir: string, options: { file?: string; dryRun: boolean }) => {
+      const resolvedDir = path.resolve(targetDir);
+      console.log(pc.cyan(`\n🔄 Syncing environment template in ${pc.bold(resolvedDir)}...\n`));
+
+      const result = await syncEnvironment(resolvedDir, {
+        exampleFileName: options.file,
+        dryRun: options.dryRun
+      });
+
+      if (result._tag === 'Err') {
+        console.error(pc.red(`❌ Sync failed: ${result.error.message}`));
+        process.exit(1);
+      }
+
+      const report = result.value;
+      const relPath = relativeDisplay(resolvedDir, report.examplePath);
+
+      if (report.addedKeys.length === 0) {
+        console.log(
+          pc.green(
+            `✨ Up to date! ${pc.bold(relPath)} already contains all ${report.totalKeys} variables.\n`
+          )
+        );
+        return;
+      }
+
+      if (options.dryRun) {
+        console.log(
+          pc.yellow(
+            `[Dry-Run] Would add ${report.addedKeys.length} missing key(s) to ${pc.bold(relPath)}:`
+          )
+        );
+        for (const key of report.addedKeys) {
+          console.log(pc.yellow(`  + ${key}`));
+        }
+        console.log(pc.dim('\nRun without --dry-run to apply changes.\n'));
+        return;
+      }
+
+      console.log(
+        pc.bold(
+          pc.green(
+            `✨ Successfully synced ${pc.bold(relPath)}! Added ${report.addedKeys.length} key(s):\n`
+          )
+        )
+      );
+      for (const key of report.addedKeys) {
+        console.log(pc.green(`  + ${key}=`));
+      }
+      console.log(pc.dim(`\nTotal variables now in template: ${report.totalKeys}\n`));
     });
 }

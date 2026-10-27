@@ -6,7 +6,7 @@ import { parseEnvContent } from '../../src/modules/env/env-file-parser.js';
 import { tsJsScanner } from '../../src/modules/env/scanners/ts-js.js';
 import { pythonScanner } from '../../src/modules/env/scanners/python.js';
 import { scanContentForSecrets, redactSecret } from '../../src/modules/env/secret-scanner.js';
-import { checkEnvironment, scanSecrets } from '../../src/modules/env/engine.js';
+import { checkEnvironment, scanSecrets, syncEnvironment } from '../../src/modules/env/engine.js';
 import { isOk, unwrap } from '../../src/core/result.js';
 
 const FIXTURES_DIR = path.resolve(__dirname, '../fixtures/env');
@@ -128,6 +128,33 @@ describe('End-to-End Environment Check', () => {
       const report = unwrap(res);
       expect(report.isClean).toBe(false);
       expect(report.findings).toHaveLength(2);
+    } finally {
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('synchronizes missing variables into .env.example cleanly', async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dea-sync-test-'));
+    try {
+      const codePath = path.join(tmpDir, 'app.ts');
+      await fs.writeFile(
+        codePath,
+        'const port = process.env.PORT;\nconst db = process.env.DATABASE_URL;\n'
+      );
+
+      const examplePath = path.join(tmpDir, '.env.example');
+      await fs.writeFile(examplePath, 'PORT=3000\n');
+
+      const res = await syncEnvironment(tmpDir);
+      expect(isOk(res)).toBe(true);
+
+      const report = unwrap(res);
+      expect(report.addedKeys).toContain('DATABASE_URL');
+      expect(report.addedKeys).not.toContain('PORT');
+
+      const content = await fs.readFile(examplePath, 'utf-8');
+      expect(content).toContain('PORT=3000');
+      expect(content).toContain('DATABASE_URL=');
     } finally {
       await fs.rm(tmpDir, { recursive: true, force: true });
     }

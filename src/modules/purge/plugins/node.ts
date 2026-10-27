@@ -6,7 +6,7 @@ import { evaluateDormancy } from '../dormancy.js';
 
 export const nodePlugin: PurgePlugin = {
   name: 'node',
-  targetDirNames: ['node_modules', '.next'],
+  targetDirNames: ['node_modules', '.next', '.nuxt', '.turbo', '.svelte-kit', '.parcel-cache'],
 
   async detect(projectDir: string, targetName: string): Promise<PurgeTarget | null> {
     const targetPath = path.join(projectDir, targetName);

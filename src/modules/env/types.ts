@@ -78,3 +78,11 @@ export interface SecretScanReport {
   readonly unreadableFiles: readonly UnreadableFile[];
   readonly isClean: boolean;
 }
+
+export interface EnvSyncReport {
+  readonly targetDir: string;
+  readonly examplePath: string;
+  readonly wasCreated: boolean;
+  readonly addedKeys: readonly string[];
+  readonly totalKeys: number;
+}

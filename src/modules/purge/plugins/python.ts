@@ -6,7 +6,15 @@ import { evaluateDormancy } from '../dormancy.js';
 
 export const pythonPlugin: PurgePlugin = {
   name: 'python',
-  targetDirNames: ['.venv', 'venv', 'env', '__pycache__'],
+  targetDirNames: [
+    '.venv',
+    'venv',
+    'env',
+    '__pycache__',
+    '.pytest_cache',
+    '.mypy_cache',
+    '.ruff_cache'
+  ],
 
   async detect(projectDir: string, targetName: string): Promise<PurgeTarget | null> {
     const targetPath = path.join(projectDir, targetName);
@@ -21,16 +29,20 @@ export const pythonPlugin: PurgePlugin = {
       return null;
     }
 
-    const isPycache = targetName === '__pycache__';
+    const isCache =
+      targetName === '__pycache__' ||
+      targetName === '.pytest_cache' ||
+      targetName === '.mypy_cache' ||
+      targetName === '.ruff_cache';
     const isVirtualEnv = await verifyVirtualEnvSignature(targetPath);
 
-    // Must be either a verified virtual environment OR __pycache__
-    if (!isPycache && !isVirtualEnv) {
+    // Must be either a verified virtual environment OR cache
+    if (!isCache && !isVirtualEnv) {
       return null;
     }
 
     // Re-installability guarantee: check for python manifest
-    const manifestFile = isPycache ? 'bytecode' : await findPythonManifest(projectDir);
+    const manifestFile = isCache ? 'cache' : await findPythonManifest(projectDir);
     const canRegenerate = manifestFile !== undefined;
 
     // Calculate size and dormancy
