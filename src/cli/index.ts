@@ -16,6 +16,14 @@ program
   )
   .version('0.1.0', '-v, --version', 'Output the current version of DEA');
 
+// Support `dea version` as a command
+program
+  .command('version')
+  .description('Output the current version of DEA')
+  .action(() => {
+    console.log('0.1.0');
+  });
+
 // Register Module Commands
 registerEnvCommands(program);
 

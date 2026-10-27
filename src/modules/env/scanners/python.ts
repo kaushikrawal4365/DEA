@@ -3,9 +3,9 @@ import type { DiscoveredEnvVar, EnvScanner } from '../types.js';
 /**
  * Python Scanner for environment variable accesses.
  * Supports:
- *   - os.environ['VAR_NAME'] / os.environ["VAR_NAME"]
- *   - os.environ.get('VAR_NAME', default)
- *   - os.getenv('VAR_NAME', default)
+ *   - os.environ['VAR_NAME'] / environ['VAR_NAME']
+ *   - os.environ.get('VAR_NAME', default) / environ.get('VAR_NAME', default)
+ *   - os.getenv('VAR_NAME', default) / getenv('VAR_NAME', default)
  */
 export const pythonScanner: EnvScanner = {
   name: 'python',
@@ -15,11 +15,11 @@ export const pythonScanner: EnvScanner = {
     const results: DiscoveredEnvVar[] = [];
     const lines = content.split(/\r?\n/);
 
-    // 1. os.environ['VAR'] or os.environ["VAR"]
-    const bracketPattern = /os\.environ\[['"]([a-zA-Z_][a-zA-Z0-9_]*)['"]\]/g;
-    // 2. os.environ.get('VAR', ...) or os.getenv('VAR', ...)
+    // 1. os.environ['VAR'] or environ['VAR']
+    const bracketPattern = /\b(?:os\.)?environ\[['"]([a-zA-Z_][a-zA-Z0-9_]*)['"]\]/g;
+    // 2. os.environ.get('VAR', ...) or environ.get('VAR', ...) or os.getenv('VAR', ...) or getenv('VAR', ...)
     const getPattern =
-      /(?:os\.environ\.get|os\.getenv)\(\s*['"]([a-zA-Z_][a-zA-Z0-9_]*)['"]\s*(?:,\s*([^)]+))?\)/g;
+      /\b(?:(?:os\.)?environ\.get|(?:os\.)?getenv)\(\s*['"]([a-zA-Z_][a-zA-Z0-9_]*)['"]\s*(?:,\s*([^)]+))?\)/g;
 
     for (let i = 0; i < lines.length; i++) {
       const lineNum = i + 1;
@@ -31,11 +31,11 @@ export const pythonScanner: EnvScanner = {
         line = line.slice(0, commentIndex);
       }
 
-      if (!line.includes('os.environ') && !line.includes('os.getenv')) {
+      if (!line.includes('environ') && !line.includes('getenv')) {
         continue;
       }
 
-      // Check bracket notation (os.environ['X'])
+      // Check bracket notation
       let match: RegExpExecArray | null;
       bracketPattern.lastIndex = 0;
       while ((match = bracketPattern.exec(line)) !== null) {
@@ -54,7 +54,7 @@ export const pythonScanner: EnvScanner = {
         }
       }
 
-      // Check get pattern (os.getenv('X', default))
+      // Check get pattern
       getPattern.lastIndex = 0;
       while ((match = getPattern.exec(line)) !== null) {
         const varName = match[1];
