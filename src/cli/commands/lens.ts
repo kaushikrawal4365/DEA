@@ -8,20 +8,25 @@ export function registerLensCommands(parent: Command): void {
   parent
     .command('lens')
     .description('De-noise terminal errors and isolate root-cause diagnostics')
-    .argument('[input]', 'Error log file path or raw error string (or pipe via stdin)')
-    .action(async (input?: string) => {
+    .argument('[input...]', 'Error log file path or raw error string (or pipe via stdin)')
+    .action(async (inputParts?: string[]) => {
       let rawText = '';
 
-      if (input) {
-        // Check if input is a file path
-        try {
-          const stat = await fs.stat(input);
-          if (stat.isFile()) {
-            rawText = await fs.readFile(input, 'utf-8');
+      if (inputParts && inputParts.length > 0) {
+        // If single argument, check if it's a file path
+        if (inputParts.length === 1 && inputParts[0]) {
+          try {
+            const stat = await fs.stat(inputParts[0]);
+            if (stat.isFile()) {
+              rawText = await fs.readFile(inputParts[0], 'utf-8');
+            } else {
+              rawText = inputParts[0];
+            }
+          } catch {
+            rawText = inputParts[0];
           }
-        } catch {
-          // Input is raw text argument
-          rawText = input;
+        } else {
+          rawText = inputParts.join(' ');
         }
       } else {
         // Read from stdin (piped input)
