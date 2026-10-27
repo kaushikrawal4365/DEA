@@ -1,7 +1,10 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { ok, err, type Result } from '../../core/result.js';
+import { isSameOrSubpath } from '../../core/path.js';
 import { defaultPurgePlugins } from './plugins/index.js';
+import { verifyVirtualEnvSignature } from './plugins/python.js';
 import { safeDeleteDirectory } from './safe-delete.js';
 import { formatBytes } from './size-calculator.js';
 import type {
@@ -17,6 +20,18 @@ export interface PurgeScanOptions {
   readonly maxDepth?: number;
   readonly dormantOnly?: boolean;
   readonly dormantThresholdDays?: number;
+  readonly allowSelfPurge?: boolean;
+}
+
+function getDeaSelfDir(): string | null {
+  try {
+    const currentFilePath = fileURLToPath(import.meta.url);
+    // engine.ts compiles to dist/modules/purge/engine.js
+    // Package root is 3 levels up: ../../../
+    return path.resolve(path.dirname(currentFilePath), '../../../');
+  } catch {
+    return null;
+  }
 }
 
 export interface PurgeExecuteOptions {
@@ -52,6 +67,7 @@ export async function scanForPurgeTargets(
 
     const targets: PurgeTarget[] = [];
     const resolvedRoot = path.resolve(rootDir);
+    const deaSelfDir = getDeaSelfDir();
 
     async function walk(currentDir: string, currentDepth: number) {
       if (currentDepth > maxDepth) {
@@ -74,13 +90,20 @@ export async function scanForPurgeTargets(
           continue;
         }
 
+        const fullEntryPath = path.join(currentDir, entry.name);
+
+        // Self-Purge Protection: Never purge DEA's own active installation / runtime files!
+        if (!options.allowSelfPurge && deaSelfDir && isSameOrSubpath(deaSelfDir, fullEntryPath)) {
+          continue;
+        }
+
         // Check 1: Direct name match (e.g. node_modules, target, .venv)
         let plugin = targetMap.get(entry.name);
 
-        // Check 2: Custom-named virtualenv (has pyvenv.cfg inside)
+        // Check 2: Custom-named virtualenv (has pyvenv.cfg, Scripts/activate, or bin/activate)
         if (!plugin) {
-          const hasPyvenvCfg = await checkHasPyvenvCfg(path.join(currentDir, entry.name));
-          if (hasPyvenvCfg) {
+          const isVenv = await verifyVirtualEnvSignature(fullEntryPath);
+          if (isVenv) {
             plugin = plugins.find(p => p.name === 'python');
           }
         }
@@ -98,7 +121,7 @@ export async function scanForPurgeTargets(
         }
 
         // Recurse into child directory
-        await walk(path.join(currentDir, entry.name), currentDepth + 1);
+        await walk(fullEntryPath, currentDepth + 1);
       }
     }
 
@@ -117,15 +140,6 @@ export async function scanForPurgeTargets(
   } catch (e: unknown) {
     const error = e instanceof Error ? e : new Error(String(e));
     return err(error);
-  }
-}
-
-async function checkHasPyvenvCfg(dirPath: string): Promise<boolean> {
-  try {
-    const stat = await fs.stat(path.join(dirPath, 'pyvenv.cfg'));
-    return stat.isFile();
-  } catch {
-    return false;
   }
 }
 

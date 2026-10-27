@@ -104,4 +104,36 @@ describe('Purge Engine & Target Discovery', () => {
     const pkgStat = await fs.stat(path.join(projectDir, 'package.json'));
     expect(pkgStat.isFile()).toBe(true);
   });
+
+  it('discovers custom-named virtualenvs (e.g. mvenv) using internal structural signatures', async () => {
+    const projectDir = path.join(rootDir, 'python-app');
+    const customVenvDir = path.join(projectDir, 'mvenv');
+    await fs.mkdir(customVenvDir, { recursive: true });
+    await fs.writeFile(
+      path.join(customVenvDir, 'pyvenv.cfg'),
+      'home = /usr/bin\nversion = 3.11.0\n'
+    );
+    await fs.writeFile(path.join(customVenvDir, 'dummy_lib.py'), 'print("test")');
+    await fs.writeFile(path.join(projectDir, 'requirements.txt'), 'numpy>=1.20.0\n');
+
+    const scanRes = await scanForPurgeTargets(rootDir);
+    expect(isOk(scanRes)).toBe(true);
+
+    const scanReport = unwrap(scanRes);
+    const venvTarget = scanReport.targets.find(t => t.path === customVenvDir);
+    expect(venvTarget).toBeDefined();
+    expect(venvTarget?.pluginName).toBe('python');
+    expect(venvTarget?.canRegenerate).toBe(true);
+    expect(venvTarget?.manifestFile).toBe('requirements.txt');
+  });
+
+  it('safely skips DEA self-installation files during purge sweeps', async () => {
+    const deaRoot = path.resolve(__dirname, '../../');
+    const scanRes = await scanForPurgeTargets(deaRoot, { allowSelfPurge: false });
+    expect(isOk(scanRes)).toBe(true);
+
+    const report = unwrap(scanRes);
+    const selfModules = report.targets.find(t => t.path === path.join(deaRoot, 'node_modules'));
+    expect(selfModules).toBeUndefined();
+  });
 });

@@ -75,7 +75,7 @@ export const pythonPlugin: PurgePlugin = {
   }
 };
 
-async function verifyVirtualEnvSignature(dirPath: string): Promise<boolean> {
+export async function verifyVirtualEnvSignature(dirPath: string): Promise<boolean> {
   // Check 1: pyvenv.cfg
   try {
     const cfg = await fs.stat(path.join(dirPath, 'pyvenv.cfg'));
@@ -94,11 +94,28 @@ async function verifyVirtualEnvSignature(dirPath: string): Promise<boolean> {
     // Continue
   }
 
+  // Check 3: Conda meta directory
+  try {
+    const condaStat = await fs.stat(path.join(dirPath, 'conda-meta'));
+    if (condaStat.isDirectory()) return true;
+  } catch {
+    // Continue
+  }
+
   return false;
 }
 
 async function findPythonManifest(projectDir: string): Promise<string | undefined> {
-  const manifests = ['requirements.txt', 'pyproject.toml', 'Pipfile', 'setup.py'];
+  const manifests = [
+    'requirements.txt',
+    'pyproject.toml',
+    'Pipfile',
+    'setup.py',
+    'setup.cfg',
+    'environment.yml',
+    'poetry.lock',
+    'uv.lock'
+  ];
   for (const m of manifests) {
     try {
       const stat = await fs.stat(path.join(projectDir, m));
