@@ -50,6 +50,12 @@ export interface SecretRule {
   readonly description: string;
 }
 
+export interface UnreadableFile {
+  readonly path: string;
+  readonly reason: string;
+  readonly isCloudOffline: boolean;
+}
+
 export interface EnvCheckReport {
   readonly targetDir: string;
   readonly usedVariables: readonly DiscoveredEnvVar[];
@@ -61,6 +67,7 @@ export interface EnvCheckReport {
   readonly missingFromExample: readonly string[];
   readonly unusedInEnv: readonly string[];
   readonly envFilesFound: readonly string[];
+  readonly unreadableFiles: readonly UnreadableFile[];
   readonly isClean: boolean;
 }
 
@@ -68,5 +75,6 @@ export interface SecretScanReport {
   readonly targetDir: string;
   readonly filesScanned: number;
   readonly findings: readonly SecretFinding[];
+  readonly unreadableFiles: readonly UnreadableFile[];
   readonly isClean: boolean;
 }

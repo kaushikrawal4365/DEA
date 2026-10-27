@@ -26,6 +26,32 @@ export function registerEnvCommands(parent: Command): void {
 
       const report = result.value;
 
+      // Unreadable / Offline files warning
+      if (report.unreadableFiles.length > 0) {
+        const cloudCount = report.unreadableFiles.filter(f => f.isCloudOffline).length;
+        if (cloudCount > 0) {
+          console.log(
+            pc.yellow(
+              `☁️  Skipped ${cloudCount} cloud-only file(s) (OneDrive Files On-Demand is offline).`
+            )
+          );
+          console.log(
+            pc.dim(
+              '   💡 Tip: Make sure the OneDrive app is running, or right-click the folder and select "Always keep on this device".\n'
+            )
+          );
+        }
+
+        const otherUnreadable = report.unreadableFiles.filter(f => !f.isCloudOffline);
+        if (otherUnreadable.length > 0) {
+          console.log(pc.yellow(`⚠️  Skipped ${otherUnreadable.length} unreadable file(s):`));
+          for (const u of otherUnreadable.slice(0, 5)) {
+            console.log(pc.dim(`   • ${relativeDisplay(resolvedDir, u.path)}: ${u.reason}`));
+          }
+          console.log('');
+        }
+      }
+
       // 1. Env files found
       if (report.envFilesFound.length === 0) {
         console.log(pc.yellow('⚠️  No .env files found in the project.'));
@@ -123,6 +149,18 @@ export function registerEnvCommands(parent: Command): void {
       }
 
       const report = result.value;
+
+      if (report.unreadableFiles.length > 0) {
+        const cloudCount = report.unreadableFiles.filter(f => f.isCloudOffline).length;
+        if (cloudCount > 0) {
+          console.log(
+            pc.yellow(
+              `☁️  Skipped ${cloudCount} cloud-only file(s) (OneDrive Files On-Demand is offline).\n`
+            )
+          );
+        }
+      }
+
       console.log(pc.dim(`Scanned ${report.filesScanned} files.`));
 
       if (report.findings.length === 0) {

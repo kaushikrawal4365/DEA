@@ -11,7 +11,8 @@ import type {
   ParsedEnvFile,
   SecretFinding,
   SecretRule,
-  SecretScanReport
+  SecretScanReport,
+  UnreadableFile
 } from './types.js';
 
 const DEFAULT_IGNORED_DIRS = new Set([
@@ -44,6 +45,7 @@ export async function checkEnvironment(
 
     // 1. Discover all candidate files
     const allFiles = await walkDirectory(targetDir, ignoreDirs);
+    const unreadableFiles: UnreadableFile[] = [];
 
     // 2. Discover and parse .env and .env.example files
     const envFiles: ParsedEnvFile[] = [];
@@ -51,17 +53,29 @@ export async function checkEnvironment(
 
     for (const file of allFiles) {
       const baseName = path.basename(file);
-      if (baseName === '.env.example' || baseName === '.env.template') {
-        const content = await fs.readFile(file, 'utf-8');
-        const parsed = parseEnvContent(content, file);
-        if (parsed._tag === 'Ok') {
-          exampleFile = parsed.value;
+      if (
+        baseName === '.env.example' ||
+        baseName === '.env.template' ||
+        baseName === '.env.sample'
+      ) {
+        const readRes = await tryReadFile(file);
+        if (readRes.success) {
+          const parsed = parseEnvContent(readRes.content, file);
+          if (parsed._tag === 'Ok') {
+            exampleFile = parsed.value;
+          }
+        } else {
+          unreadableFiles.push(readRes.unreadable);
         }
       } else if (baseName === '.env' || baseName.startsWith('.env.')) {
-        const content = await fs.readFile(file, 'utf-8');
-        const parsed = parseEnvContent(content, file);
-        if (parsed._tag === 'Ok') {
-          envFiles.push(parsed.value);
+        const readRes = await tryReadFile(file);
+        if (readRes.success) {
+          const parsed = parseEnvContent(readRes.content, file);
+          if (parsed._tag === 'Ok') {
+            envFiles.push(parsed.value);
+          }
+        } else {
+          unreadableFiles.push(readRes.unreadable);
         }
       }
     }
@@ -72,9 +86,13 @@ export async function checkEnvironment(
     for (const file of allFiles) {
       const scanner = getScannerForFile(file, scanners);
       if (scanner) {
-        const content = await fs.readFile(file, 'utf-8');
-        const discovered = scanner.scan(file, content);
-        usedVariables.push(...discovered);
+        const readRes = await tryReadFile(file);
+        if (readRes.success) {
+          const discovered = scanner.scan(file, readRes.content);
+          usedVariables.push(...discovered);
+        } else {
+          unreadableFiles.push(readRes.unreadable);
+        }
       }
     }
 
@@ -148,6 +166,7 @@ export async function checkEnvironment(
       missingFromExample,
       unusedInEnv,
       envFilesFound: envFiles.map(f => f.filePath),
+      unreadableFiles,
       isClean
     });
   } catch (e: unknown) {
@@ -166,6 +185,7 @@ export async function scanSecrets(
 
     const allFiles = await walkDirectory(targetDir, ignoreDirs);
     const findings: SecretFinding[] = [];
+    const unreadableFiles: UnreadableFile[] = [];
     let filesScanned = 0;
 
     for (const file of allFiles) {
@@ -174,21 +194,63 @@ export async function scanSecrets(
         continue;
       }
 
-      filesScanned++;
-      const content = await fs.readFile(file, 'utf-8');
-      const fileFindings = scanContentForSecrets(file, content, rules);
-      findings.push(...fileFindings);
+      const readRes = await tryReadFile(file);
+      if (readRes.success) {
+        filesScanned++;
+        const fileFindings = scanContentForSecrets(file, readRes.content, rules);
+        findings.push(...fileFindings);
+      } else {
+        unreadableFiles.push(readRes.unreadable);
+      }
     }
 
     return ok({
       targetDir,
       filesScanned,
       findings,
+      unreadableFiles,
       isClean: findings.length === 0
     });
   } catch (e: unknown) {
     const error = e instanceof Error ? e : new Error(String(e));
     return err(error);
+  }
+}
+
+type SafeReadResult =
+  { success: true; content: string } | { success: false; unreadable: UnreadableFile };
+
+async function tryReadFile(filePath: string): Promise<SafeReadResult> {
+  try {
+    const content = await fs.readFile(filePath, 'utf-8');
+    return { success: true, content };
+  } catch (e: unknown) {
+    const errObj = e as { code?: string; message?: string };
+    const msg = errObj.message ?? String(e);
+    const code = errObj.code ?? '';
+
+    const isCloudOffline =
+      code === 'UNKNOWN' ||
+      msg.includes('unknown error') ||
+      msg.includes('cloud file') ||
+      msg.includes('0x8007016A');
+
+    const reason = isCloudOffline
+      ? 'File is offline (OneDrive cloud file not downloaded locally)'
+      : code === 'EACCES' || code === 'EPERM'
+        ? 'Permission denied'
+        : code === 'EBUSY'
+          ? 'File is locked by another process'
+          : msg;
+
+    return {
+      success: false,
+      unreadable: {
+        path: filePath,
+        reason,
+        isCloudOffline
+      }
+    };
   }
 }
 
