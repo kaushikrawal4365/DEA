@@ -3,6 +3,7 @@
 import { Command } from 'commander';
 import pc from 'picocolors';
 import { registerEnvCommands } from './commands/env.js';
+import { registerPurgeCommands } from './commands/purge.js';
 
 const program = new Command();
 
@@ -26,19 +27,9 @@ program
 
 // Register Module Commands
 registerEnvCommands(program);
+registerPurgeCommands(program);
 
-// Stubs for upcoming Milestone 2 and 3
-program
-  .command('purge')
-  .description('Safely reclaim disk space from dormant build caches and dependencies')
-  .option('-d, --dry-run', 'Preview deletions without modifying files', true)
-  .option('-f, --force', 'Proceed without interactive confirmation', false)
-  .action(options => {
-    console.log(
-      pc.yellow(`DEA Purge module initializing (dryRun: ${options.dryRun})... (Milestone 2)`)
-    );
-  });
-
+// Stub for upcoming Milestone 3
 program
   .command('lens')
   .description('De-noise terminal errors and isolate root-cause diagnostics')
