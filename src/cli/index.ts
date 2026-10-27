@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import pc from 'picocolors';
 import { registerEnvCommands } from './commands/env.js';
 import { registerPurgeCommands } from './commands/purge.js';
+import { registerLensCommands } from './commands/lens.js';
 
 const program = new Command();
 
@@ -25,17 +26,10 @@ program
     console.log('0.1.0');
   });
 
-// Register Module Commands
+// Register All Module Commands
 registerEnvCommands(program);
 registerPurgeCommands(program);
-
-// Stub for upcoming Milestone 3
-program
-  .command('lens')
-  .description('De-noise terminal errors and isolate root-cause diagnostics')
-  .action(() => {
-    console.log(pc.yellow('DEA Lens module initializing... (Milestone 3)'));
-  });
+registerLensCommands(program);
 
 program.parse(process.argv);
 
