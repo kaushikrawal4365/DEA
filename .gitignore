@@ -18,6 +18,10 @@ coverage/
 *.pem
 *.key
 
+# Un-ignore test fixtures
+!tests/fixtures/**/.env
+!tests/fixtures/**/.env.*
+
 # Logs
 *.log
 npm-debug.log*
