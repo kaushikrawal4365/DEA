@@ -114,6 +114,14 @@ describe('Terminal Crash Lens Engine', () => {
 });
 
 describe('Multi-Anchor Error Fingerprints', () => {
+  it('matches npm missing script', () => {
+    const raw = 'npm error Missing script: "dev"\nnpm error To see a list of scripts, run: npm run';
+    const diag = matchFingerprint(raw);
+    expect(diag).not.toBeNull();
+    expect(diag?.title).toContain('Missing npm script: "dev"');
+    expect(diag?.remedy.command).toBe('npm run');
+  });
+
   it('matches Docker port collision', () => {
     const raw =
       'docker: Error response from daemon: failed to bind port 0.0.0.0:8080: address already in use';
@@ -145,7 +153,6 @@ describe('Multi-Anchor Error Fingerprints', () => {
 describe('Shell History Reader', () => {
   it('safely attempts to read shell history without throwing', async () => {
     const lastCmd = await getLastShellCommand();
-    // Either returns null or a valid command
     if (lastCmd) {
       expect(typeof lastCmd.command).toBe('string');
       expect(typeof lastCmd.historySource).toBe('string');

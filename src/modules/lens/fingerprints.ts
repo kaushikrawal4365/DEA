@@ -15,7 +15,24 @@ export interface ErrorFingerprint {
 }
 
 export const defaultFingerprints: readonly ErrorFingerprint[] = [
-  // 1. Docker Port Collision
+  // 1. npm Missing Script
+  {
+    id: 'npm-missing-script',
+    title: vars => (vars.script ? `Missing npm script: "${vars.script}"` : 'Missing npm script'),
+    category: 'build',
+    matchAll: ['Missing script:'],
+    extract: {
+      script: /Missing script:\s*["']?([^"'\r\n]+?)["']?(?:\r?\n|$)/
+    },
+    rootCause: vars => `Script "${vars.script ?? 'unknown'}" is not defined in package.json`,
+    summary: vars =>
+      `npm cannot find "${vars.script ?? 'the specified script'}" in the "scripts" section of package.json.`,
+    remedyAction: vars =>
+      `Add "${vars.script ?? 'your script'}" to the "scripts" object in package.json, or run "npm run" to see available scripts.`,
+    remedyCommand: 'npm run'
+  },
+
+  // 2. Docker Port Collision
   {
     id: 'docker-port-allocated',
     title: vars =>
@@ -36,7 +53,7 @@ export const defaultFingerprints: readonly ErrorFingerprint[] = [
         : `docker ps --filter "publish=${vars.port ?? '3000'}"`
   },
 
-  // 2. Git Merge Conflict / Push Rejected
+  // 3. Git Merge Conflict / Push Rejected
   {
     id: 'git-push-rejected',
     title: 'Git Push Rejected (Non-Fast-Forward)',
@@ -49,7 +66,7 @@ export const defaultFingerprints: readonly ErrorFingerprint[] = [
     remedyCommand: 'git pull --rebase origin main'
   },
 
-  // 3. Prisma Unique Constraint
+  // 4. Prisma Unique Constraint
   {
     id: 'prisma-p2002',
     title: 'Database Unique Constraint Violation (P2002)',
@@ -61,7 +78,7 @@ export const defaultFingerprints: readonly ErrorFingerprint[] = [
       'Ensure unique fields (like email or username) are unique before executing the mutation.'
   },
 
-  // 4. Vite / Rollup Unresolved Import
+  // 5. Vite / Rollup Unresolved Import
   {
     id: 'vite-unresolved-import',
     title: 'Vite/Rollup Failed to Resolve Import',
@@ -80,7 +97,7 @@ export const defaultFingerprints: readonly ErrorFingerprint[] = [
         : undefined
   },
 
-  // 5. Python Virtualenv Not Activated
+  // 6. Python Virtualenv Not Activated
   {
     id: 'python-no-module-venv',
     title: vars =>
