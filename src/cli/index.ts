@@ -5,6 +5,8 @@ import pc from 'picocolors';
 import { registerEnvCommands } from './commands/env.js';
 import { registerPurgeCommands } from './commands/purge.js';
 import { registerLensCommands } from './commands/lens.js';
+import { registerFixCommand } from './commands/fix.js';
+import { registerHookCommand } from './commands/hook.js';
 
 const program = new Command();
 
@@ -30,6 +32,8 @@ program
 registerEnvCommands(program);
 registerPurgeCommands(program);
 registerLensCommands(program);
+registerFixCommand(program);
+registerHookCommand(program);
 
 program.parse(process.argv);
 

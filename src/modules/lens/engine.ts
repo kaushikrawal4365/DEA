@@ -1,6 +1,7 @@
 import { ok, type Result } from '../../core/result.js';
 import { runCommand } from '../../core/process/runner.js';
 import { defaultParsers } from './parsers/index.js';
+import { matchFingerprint } from './fingerprints.js';
 import type { ErrorContext, ErrorParser, LensDiagnostic } from './types.js';
 
 export interface LensEngineOptions {
@@ -11,9 +12,16 @@ export async function diagnoseError(
   context: ErrorContext,
   options: LensEngineOptions = {}
 ): Promise<Result<LensDiagnostic, Error>> {
-  const parsers = options.parsers ?? defaultParsers;
+  const allOutput = `${context.rawStderr}\n${context.rawStdout}`.trim();
 
-  // 1. Try active parsers by priority
+  // 1. Check Multi-Anchor Error Fingerprint catalog (Fast & Extensible)
+  const fpMatch = matchFingerprint(allOutput);
+  if (fpMatch) {
+    return ok(fpMatch);
+  }
+
+  // 2. Try active language / OS parsers by priority
+  const parsers = options.parsers ?? defaultParsers;
   for (const parser of parsers) {
     if (parser.canParse(context)) {
       try {
@@ -27,8 +35,7 @@ export async function diagnoseError(
     }
   }
 
-  // 2. Layer 3: REA Fallback Rule (Epistemic Unknown - Never Guess)
-  const allOutput = `${context.rawStderr}\n${context.rawStdout}`.trim();
+  // 3. Layer 3: REA Fallback Rule (Epistemic Unknown - Never Guess)
   const lines = allOutput.split(/\r?\n/).filter(l => l.trim().length > 0);
   const tailLines = lines.slice(-8);
 

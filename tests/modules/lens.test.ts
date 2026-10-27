@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { diagnoseError } from '../../src/modules/lens/engine.js';
+import { matchFingerprint } from '../../src/modules/lens/fingerprints.js';
+import { getLastShellCommand } from '../../src/modules/lens/history.js';
 import { isOk, unwrap } from '../../src/core/result.js';
 
 describe('Terminal Crash Lens Engine', () => {
@@ -108,5 +110,45 @@ describe('Terminal Crash Lens Engine', () => {
     expect(diag.isRecognized).toBe(false);
     expect(diag.category).toBe('unknown');
     expect(diag.remedy.action).toContain('github.com');
+  });
+});
+
+describe('Multi-Anchor Error Fingerprints', () => {
+  it('matches Docker port collision', () => {
+    const raw =
+      'docker: Error response from daemon: failed to bind port 0.0.0.0:8080: address already in use';
+    const diag = matchFingerprint(raw);
+    expect(diag).not.toBeNull();
+    expect(diag?.title).toContain('Docker Port');
+    expect(diag?.summary).toContain('8080');
+  });
+
+  it('matches Git push rejected non-fast-forward', () => {
+    const raw =
+      '! [rejected] main -> main (non-fast-forward) error: failed to push some refs to git';
+    const diag = matchFingerprint(raw);
+    expect(diag).not.toBeNull();
+    expect(diag?.title).toContain('Git Push Rejected');
+    expect(diag?.remedy.command).toContain('git pull --rebase');
+  });
+
+  it('matches Vite unresolved import', () => {
+    const raw =
+      '[vite] Failed to resolve import "lodash" from "src/index.ts". Does the file exist?';
+    const diag = matchFingerprint(raw);
+    expect(diag).not.toBeNull();
+    expect(diag?.title).toContain('Vite/Rollup Failed to Resolve Import');
+    expect(diag?.remedy.command).toBe('npm install lodash');
+  });
+});
+
+describe('Shell History Reader', () => {
+  it('safely attempts to read shell history without throwing', async () => {
+    const lastCmd = await getLastShellCommand();
+    // Either returns null or a valid command
+    if (lastCmd) {
+      expect(typeof lastCmd.command).toBe('string');
+      expect(typeof lastCmd.historySource).toBe('string');
+    }
   });
 });

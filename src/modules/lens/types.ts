@@ -2,7 +2,7 @@
  * Pure domain contracts for the DEA Terminal Crash Lens module.
  */
 
-export type LensCategory = 'os' | 'language' | 'build' | 'unknown';
+export type LensCategory = 'os' | 'language' | 'build' | 'database' | 'unknown';
 
 export interface CodeLocation {
   readonly file: string;
